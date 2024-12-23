@@ -36,6 +36,7 @@ import (
 	"github.com/go-sicky/sicky/driver"
 	rgConsul "github.com/go-sicky/sicky/registry/consul"
 	rgMdns "github.com/go-sicky/sicky/registry/mdns"
+	"github.com/go-sicky/sicky/runtime"
 	srvGRPC "github.com/go-sicky/sicky/server/grpc"
 	srvHTTP "github.com/go-sicky/sicky/server/http"
 	srvWebsocket "github.com/go-sicky/sicky/server/websocket"
@@ -56,7 +57,8 @@ type ConfigDef struct {
 		Consul *rgConsul.Config `json:"consul" yaml:"consul" mapstructure:"consul"`
 		Mdns   *rgMdns.Config   `json:"mdns" yaml:"mdns" mapstructure:"mdns"`
 	} `json:"registry" yaml:"registry" mapstructure:"registry"`
-	Service *sicky.Config `json:"service" yaml:"service" mapstructure:"service"`
+	Runtime *runtime.Config `json:"runtime" yaml:"runtime" mapstructure:"runtime"`
+	Service *sicky.Config   `json:"service" yaml:"service" mapstructure:"service"`
 	Driver  struct {
 		DB    *driver.DBConfig    `json:"db" yaml:"db" mapstructure:"db"`
 		Redis *driver.RedisConfig `json:"redis" yaml:"redis" mapstructure:"redis"`
