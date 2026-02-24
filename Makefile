@@ -1,7 +1,11 @@
-PROJECT=svc.biz.room
-PREFIX=$(shell pwd)
-VERSION=$(shell git describe --match 'v[0-9]*'  --always)
-DEFAULT_BRANCH=$(shell git symbolic-ref --short -q HEAD)
+# Makefile
+
+PROJECT				:= svc.biz.room
+PREFIX				:= $(shell pwd)
+VERSION				:= $(shell [ -s VERSION ] && head -n 1 VERSION || echo latest)
+DEFAULT_BRANCH		:= $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
+COMMIT_SHA			:= $(shell git rev-parse --short HEAD 2>/dev/null || echo "0000000")
+BUILD_TIME			:= $(shell date +'%Y-%m-%d_%H:%M:%S')
 
 ifndef OS
 	OS=linux
@@ -63,13 +67,23 @@ ifndef DOCKER
 	DOCKER=docker
 endif
 
-SOURCE_DIR=$(PREFIX)
-BINARY_DIR=$(PREFIX)/bin
-BINARY_NAME=svc
-DOCKER_TAG=hkccr.ccs.tencentyun.com/herewe-live/svc.biz.room:latest
+GIT_VERSION			:= $(shell git version)
+SOURCE_DIR			:= $(PREFIX)
+BINARY_DIR			:= $(PREFIX)/bin
+BINARY_NAME			:= svc
+LINK_FLAGS			:= -s -w -extldflags "-static"
+META_FLAGS			:= -X "main.Version=$(VERSION)" \
+	-X "main.Branch=$(BRANCH)" \
+	-X "main.BuildTime=$(BUILD_TIME)" \
+	-X "main.Commit=$(COMMIT_SHA)" \
+	-X "main.AppName = $(PROJECT)"
+LDFLAGS				:= $(LINK_FLAGS) $(META_FLAGS)
+DOCKER_REG			:= hkccr.ccs.tencentyun.com/herewe-live
+DOCKER_TAG			:= $(DOCKER_REG)/$(PROJECT):$(BRANCH)
 
-.PHONY: all summary fmt proto build test upgrade grpc docker push
+.PHONY: all summary fmt proto build test upgrade doc docker push help
 .DEFAULT: all
+.DEFAULT_GOAL		:= all
 
 # Targets
 all: summary proto fmt build
@@ -83,6 +97,8 @@ summary:
 	@printf "    Docker      : \033[1;37m`$(DOCKER) -v`\033[0m\n"
 	@printf "    Git         : \033[1;37m$(shell git version)\033[0m\n"
 	@printf "    Branch      : \033[1;37m$(BRANCH)\033[0m\n"
+	@printf "    Commit      : \033[1;37m$(COMMIT_SHA)\033[0m\n"
+	@printf "    Version     : \033[1;37m$(VERSION)\033[0m\n"
 	@echo
 
 fmt:
@@ -93,17 +109,21 @@ fmt:
 
 proto:
 	@printf "\033[1;36m  Compiling protos ...\033[0m\n"
-	@for f in $(shell find ./proto -name '*.proto') ; do \
-		printf "    \033[1;34mCompiling : \033[1;35m<$${f}>\033[0m\n" && \
-		$(PROTOC) --go_out=. --go-grpc_out=. $${f} ; \
-	done
+	@if [ -d "./proto" ]; then \
+		for f in $(shell find ./proto -name '*.proto') ; do \
+			printf "    \033[1;34mCompiling : \033[1;35m<$${f}>\033[0m\n" && \
+			$(PROTOC) --go_out=. --go-grpc_out=. $${f} ; \
+		done; \
+	else \
+		printf "\033[1;34m    Skip: ./proto does not exists\033[0m"; \
+	fi
 	@echo
 
 build:
 	@printf "\033[1;36m  Compiling $(BINARY_NAME) ...\033[0m\n"
 	@mkdir -p $(BINARY_DIR)
 	@printf "    \033[1;34mTarget : \033[1;35m$(BINARY_DIR)/$(BINARY_NAME)\033[0m\n"
-	@GOOS=$(OS) GOARCH=$(ARCH) CGO_ENABLED=0 $(GO) build -a -ldflags '-extldflags "-static"' -o $(BINARY_DIR)/$(BINARY_NAME) $(SOURCE_DIR)
+	@GOOS=$(OS) GOARCH=$(ARCH) CGO_ENABLED=0 $(GO) build -a -installsuffix cgo -ldflags '$(LDFLAGS)' -o $(BINARY_DIR)/$(BINARY_NAME) $(SOURCE_DIR)
 	@echo
 
 test:
@@ -132,3 +152,13 @@ push:
 	@printf "\033[1;36m  Docker push ...\033[0m\n"
 	@$(DOCKER) push $(DOCKER_TAG)
 	@echo
+
+help:
+	@echo "Usage: make [target]"
+	@echo ""
+	@echo "Targets:"
+	@echo "  all      - Default target, runs summary, proto, fmt, and build"
+	@echo "  build    - Build the binary executable"
+	@echo "  docker   - Build docker image with version tag"
+	@echo "  test     - Run unit tests"
+

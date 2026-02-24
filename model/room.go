@@ -34,7 +34,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/go-sicky/sicky/driver"
+	"github.com/go-sicky/sicky/infra"
 	"github.com/go-sicky/sicky/logger"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
@@ -53,7 +53,7 @@ type Room struct {
 func InitRoom(ctx context.Context, dropTable bool) error {
 	if dropTable {
 		// Drop exist table
-		_, err := driver.DB.NewDropTable().Model((*Room)(nil)).Exec(ctx)
+		_, err := infra.Bun.NewDropTable().Model((*Room)(nil)).Exec(ctx)
 		if err != nil {
 			logger.Logger.ErrorContext(ctx, err.Error())
 
@@ -62,7 +62,7 @@ func InitRoom(ctx context.Context, dropTable bool) error {
 	}
 
 	// Create table
-	_, err := driver.DB.NewCreateTable().Model((*Room)(nil)).Exec(ctx)
+	_, err := infra.Bun.NewCreateTable().Model((*Room)(nil)).Exec(ctx)
 	if err != nil {
 		logger.Logger.ErrorContext(ctx, err.Error())
 
@@ -70,7 +70,7 @@ func InitRoom(ctx context.Context, dropTable bool) error {
 	}
 
 	// Indexes
-	_, err = driver.DB.NewCreateIndex().
+	_, err = infra.Bun.NewCreateIndex().
 		Model((*Room)(nil)).
 		Index("idx_room_crated_at").
 		Column("created_at").Exec(ctx)
@@ -80,7 +80,7 @@ func InitRoom(ctx context.Context, dropTable bool) error {
 		return err
 	}
 
-	_, err = driver.DB.NewCreateIndex().
+	_, err = infra.Bun.NewCreateIndex().
 		Model((*Room)(nil)).
 		Index("idx_room_updated_at").
 		Column("updated_at").Exec(ctx)
@@ -90,7 +90,7 @@ func InitRoom(ctx context.Context, dropTable bool) error {
 		return err
 	}
 
-	_, err = driver.DB.NewCreateIndex().
+	_, err = infra.Bun.NewCreateIndex().
 		Model((*Room)(nil)).
 		Index("idx_room_deleted_at").
 		Column("deleted_at").Exec(ctx)
